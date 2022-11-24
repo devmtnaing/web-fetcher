@@ -4,6 +4,7 @@ require "fileutils"
 require "json"
 require "logger"
 require "mechanize"
+require "nokogiri"
 require "open-uri"
 
 # Begin: Constant variables
@@ -21,6 +22,11 @@ end
 
 def create_destinated_folder(folder_name)
   FileUtils.mkdir_p File.join(FETCHED_SITES_DIR, folder_name)
+end
+
+def fetch_content(url)
+  page = @agent.get(url)
+  Nokogiri::HTML(page.content) # Easier to manipulate the content with Nokogiri
 end
 
 def parse_last_fetch_time(time)
@@ -53,12 +59,12 @@ def save_html_content(folder_name, content)
   end
 end
 
-def save_metadata(key, page)
+def save_metadata(key, content)
   puts "Saving content metadata"
   existing_metadata = retrieve_existing_metadata
   existing_metadata[key] = { 
-    "num_links": page.links.length,
-    "images": page.images.length,
+    "num_links": content.xpath("//a[@href]").length,
+    "images": content.xpath("//img[@src]").length,
     "last_fetch": Time.now.utc
   }
   File.open(METADATA_FILE, "w") do |f|
@@ -68,8 +74,8 @@ end
 # End: Helper methods
 
 # Begin: Main program
-agent = Mechanize.new
-agent.log = Logger.new "fetch.log"
+@agent = Mechanize.new
+@agent.log = Logger.new "fetch.log"
 urls = ARGV.reject { |arg| arg =~ /--[a-z]/}
 metadata_arg = ARGV.include?("--metadata")
 
@@ -77,20 +83,20 @@ urls.each_with_index do |url, index|
   begin 
     puts "Started fetching: #{url}"
 
-    page = agent.get(url)
+    content = fetch_content(url)
     folder_name = convert_to_folder_name(url)
     destinated_folder = create_destinated_folder(folder_name)
 
-    save_html_content(destinated_folder, page.content)
+    save_html_content(destinated_folder, content)
     if metadata_arg
-      save_metadata(folder_name, page)
+      save_metadata(folder_name, content)
       print_metadata(folder_name)
     end
 
     puts "Finished fetching: #{url}"
   rescue Exception => e
     puts "Failed to fetch: #{e.message}"
-    agent.log.error(e.message)
+    @agent.log.error(e.message)
     next
   end
   puts "\n" unless index == urls.length - 1
