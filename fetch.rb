@@ -10,6 +10,8 @@ require "open-uri"
 # Begin: Constant variables
 FETCHED_SITES_DIR = "fetched_sites"
 IMAGES_DIR = "images"
+JAVASCRIPTS_DIR = "js"
+STYLESHEETS_DIR = "css"
 METADATA_FILE = File.join(FETCHED_SITES_DIR, "metadata.json")
 # End: Constant variables
 
@@ -62,6 +64,8 @@ end
 def save_and_localize_assets(folder_name, content)
   puts "Saving assets to local folder."
   save_and_localize_images(folder_name, content.xpath("//img[@src]"))
+  save_and_localize_css(folder_name, content.xpath("//link[@rel='stylesheet']"))
+  save_and_localize_js(folder_name, content.xpath("//script[@src]"))
 end
 
 def save_and_localize_images(folder_name, images)
@@ -85,6 +89,62 @@ def save_and_localize_images(folder_name, images)
 
         # Modify the local html content
         image["src"] = "./#{IMAGES_DIR}/#{formatted_image_name}"
+      rescue Exception => e
+        puts "Warning: #{e.message}"
+        next
+      end
+    end
+  end
+end
+
+def save_and_localize_css(folder_name, stylesheets)
+  css_dir = create_destinated_folder(File.join(folder_name, STYLESHEETS_DIR))
+
+  stylesheets.each do |css|
+    next if css["href"].empty?
+
+    formatted_css_name = format_asset_name(File.basename(css["href"]))
+    puts formatted_css_name
+    File.open(File.join(css_dir, formatted_css_name), "w") do |file|
+      css_url = if URI.parse(css["href"]).host
+                    css["href"]
+                  else
+                    css["href"].prepend(folder_name).prepend("http://www.")
+                  end
+      begin
+        sleep(rand/100)
+        file.write(URI.open(css_url).read)
+
+        # Modify the local html content
+        css["href"] = "./#{STYLESHEETS_DIR}/#{formatted_css_name}"
+      rescue Exception => e
+        puts "Warning: #{e.message}"
+        next
+      end
+    end
+  end
+end
+
+def save_and_localize_js(folder_name, javascripts)
+  js_dir = create_destinated_folder(File.join(folder_name, JAVASCRIPTS_DIR))
+
+  javascripts.each do |js|
+    next if js["src"].empty?
+
+    formatted_js_name = format_asset_name(File.basename(js["src"]))
+    puts formatted_js_name
+    File.open(File.join(js_dir, formatted_js_name), "w") do |file|
+      js_url = if URI.parse(js["src"]).host
+                    js["src"]
+                  else
+                    js["src"].prepend(folder_name).prepend("http://www.")
+                  end
+      begin
+        sleep(rand/100)
+        file.write(URI.open(js_url).read)
+
+        # Modify the local html content
+        js["src"] = "./#{JAVASCRIPTS_DIR}/#{formatted_js_name}"
       rescue Exception => e
         puts "Warning: #{e.message}"
         next
