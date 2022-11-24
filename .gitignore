@@ -1,3 +1,4 @@
-.vscode/
 .DS_Store
 fetched_sites/*
+fetch.log
+.vscode/
