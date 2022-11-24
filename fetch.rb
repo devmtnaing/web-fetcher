@@ -14,7 +14,9 @@ METADATA_FILE = File.join(FETCHED_SITES_DIR, "metadata.json")
 # Begin: Helper methods
 def convert_to_folder_name(url)
   uri = URI.parse(url)
-  uri.host
+
+  # To ensure we could download different path of the same domain in different folders
+  "#{uri.host.gsub(/^www\./, '')}#{uri.path}#{uri.query}"
 end
 
 def create_destinated_folder(folder_name)
